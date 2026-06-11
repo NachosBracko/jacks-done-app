@@ -1,70 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-console.log("Supabase URL:", supabaseUrl ? "✅ Loaded" : "❌ MISSING");
-console.log("Supabase Key:", supabaseKey ? "✅ Loaded" : "❌ MISSING");
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("Loading...");
 
   useEffect(() => {
-    loadData();
+    testConnection();
   }, []);
 
-  const loadData = async () => {
+  const testConnection = async () => {
     try {
-      const { data: t } = await supabase.from('tasks').select('*');
-      const { data: p } = await supabase.from('projects').select('*');
-      setTasks(t || []);
-      setProjects(p || []);
-      setMessage(`Loaded ${t?.length || 0} tasks and ${p?.length || 0} projects`);
-    } catch (err) {
-      console.error("Supabase Error:", err);
-      setMessage("Error connecting to database");
+      const { data, error } = await supabase.from('tasks').select('*').limit(5);
+      if (error) throw error;
+      setTasks(data || []);
+      setStatus(`✅ Connected! Found ${data.length} tasks`);
+    } catch (err: any) {
+      console.error(err);
+      setStatus("❌ Connection error: " + err.message);
     }
   };
 
   const addTask = async () => {
-    const title = prompt("Task title?");
+    const title = prompt("Enter task title:");
     if (!title) return;
 
     const { error } = await supabase
       .from('tasks')
-      .insert([{ title, due_date: new Date().toISOString().split('T')[0], category: 'personal' }]);
+      .insert([{ title, due_date: new Date().toISOString().split('T')[0] }]);
 
-    if (error) alert("Error: " + error.message);
+    if (error) alert("Save failed: " + error.message);
     else {
-      alert("Task added!");
-      loadData();
+      alert("✅ Task saved to database!");
+      testConnection();
     }
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8">✅ Done</h1>
+    <div className="p-8 max-w-xl mx-auto text-white">
+      <h1 className="text-5xl font-bold mb-8">✅ Done</h1>
       
-      <button onClick={addTask} className="bg-blue-600 text-white px-6 py-3 rounded-2xl mb-8">
-        + Add New Task
+      <p className="mb-6 text-lg">{status}</p>
+
+      <button 
+        onClick={addTask}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl text-xl mb-8 w-full"
+      >
+        + Add New Task (Test Save)
       </button>
 
-      <p className="mb-4 text-green-400">{message}</p>
-
-      <h2 className="text-2xl mb-4">Tasks from Database</h2>
-      <div className="space-y-3">
-        {tasks.length === 0 && <p>No tasks yet...</p>}
-        {tasks.map((t: any) => (
-          <div key={t.id} className="bg-slate-800 p-4 rounded-2xl">
+      <h2 className="text-2xl mb-4">Tasks in Database</h2>
+      {tasks.length === 0 ? (
+        <p>No tasks yet. Add one above.</p>
+      ) : (
+        tasks.map((t: any) => (
+          <div key={t.id} className="bg-slate-800 p-4 rounded-xl mb-3">
             {t.title} — {t.due_date}
           </div>
-        ))}
-      </div>
+        ))
+      )}
     </div>
   );
 }
