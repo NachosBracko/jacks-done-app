@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Done - Simple Productivity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #2563eb;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .task-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        
+        .task-card.completed {
+            opacity: 0.6;
+            background-color: #f8fafc;
+        }
+        
+        .big-button {
+            transition: all 0.1s ease;
+        }
+        
+        .big-button:active {
+            transform: scale(0.97);
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-tab.active {
+            background-color: #2563eb;
+            color: white;
+            box-shadow: 0 1px 3px rgb(37 99 235 / 0.3);
+        }
+
+        .modal {
+            animation: modalPopIn 0.2s ease forwards;
+        }
+
+        @keyframes modalPopIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .task-check {
+            transition: all 0.2s ease;
+        }
+        
+        .stat-number {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center">
+                    <i class="fa-solid fa-check-double text-white text-2xl"></i>
+                </div>
+                <div>
+                    <span class="font-display text-3xl font-semibold tracking-tighter text-slate-900">Done</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-x-2">
+                <div class="px-3 py-1.5 bg-slate-100 rounded-2xl text-sm flex items-center gap-x-2">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-slate-600 text-xs font-medium">Jack's Dashboard</span>
+                </div>
+                <button onclick="showReports()" 
+                        class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors">
+                    <i class="fa-solid fa-chart-line mr-1.5"></i>
+                    <span>Reports</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4 pt-6 pb-12">
+        
+        <!-- Welcome / Today -->
+        <div class="flex items-end justify-between mb-6">
+            <div>
+                <div class="text-sm text-slate-500">Wednesday, June 10</div>
+                <div class="text-3xl font-semibold tracking-tighter text-slate-900">Good afternoon, Jack</div>
+            </div>
+            <div class="text-right">
+                <div class="text-emerald-600 text-sm font-medium">4 of 7 done today</div>
+                <div class="text-xs text-slate-400">57% complete</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex gap-2 mb-6 bg-white p-1 rounded-3xl shadow-sm border border-slate-200 w-fit">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard"
+                    class="nav-tab active px-5 py-2 text-sm flex items-center gap-x-2">
+                <i class="fa-solid fa-th-large"></i>
+                <span>Dashboard</span>
+            </button>
+            <button onclick="switchTab('projects')" id="tab-projects"
+                    class="nav-tab px-5 py-2 text-sm flex items-center gap-x-2 text-slate-600 hover:text-slate-900">
+                <i class="fa-solid fa-car"></i>
+                <span>Projects</span>
+            </button>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard-tab">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div class="section-header">Today's Priorities</div>
+                <div class="text-xs text-slate-400">12 max • 7 active</div>
+            </div>
+            
+            <!-- Task Cards Container -->
+            <div id="task-list" class="grid grid-cols-1 gap-3">
+                <!-- Populated by JavaScript -->
+            </div>
+            
+            <!-- Add Task Button -->
+            <button onclick="showAddTaskModal()"
+                    class="mt-4 w-full flex items-center justify-center gap-x-2 py-4 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all text-slate-600 hover:text-blue-600 rounded-3xl font-medium text-sm">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add new task</span>
+            </button>
+        </div>
+
+        <!-- PROJECTS TAB -->
+        <div id="projects-tab" class="hidden">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div class="section-header">Active Projects</div>
+                <button onclick="showAddProjectModal()"
+                        class="flex items-center gap-x-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>New Project</span>
+                </button>
+            </div>
+            
+            <div id="project-list" class="space-y-4">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="add-task-modal" onclick="if (event.target.id === 'add-task-modal') hideAddTaskModal()" 
+         class="hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="bg-white w-full sm:w-[420px] rounded-t-3xl sm:rounded-3xl p-6 modal">
+            <div class="flex justify-between items-center mb-5">
+                <div class="font-semibold text-xl">Add New Task</div>
+                <button onclick="hideAddTaskModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-slate-500 block mb-1.5">Task name</label>
+                    <input id="task-title" type="text" placeholder="e.g. Buy brakes for Ford" 
+                           class="w-full border border-slate-300 focus:border-blue-500 outline-none px-4 py-3 rounded-2xl text-sm">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-medium text-slate-500 block mb-1.5">Due date</label>
+                        <input id="task-date" type="date" value="2026-06-11" 
+                               class="w-full border border-slate-300 focus:border-blue-500 outline-none px-4 py-3 rounded-2xl text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-slate-500 block mb-1.5">Category</label>
+                        <select id="task-category" class="w-full border border-slate-300 focus:border-blue-500 outline-none px-4 py-3 rounded-2xl text-sm">
+                            <option value="personal">Personal</option>
+                            <option value="repairs">Repairs</option>
+                            <option value="flips">Car Flips</option>
+                            <option value="lawn_tools">Lawn Tools</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-medium text-slate-500 block mb-1.5">Recurring</label>
+                    <div class="flex gap-2">
+                        <div onclick="selectRecurring(this, 'none')" class="recurring-option flex-1 text-center py-2 text-xs border border-blue-600 bg-blue-50 text-blue-700 rounded-2xl cursor-pointer">None</div>
+                        <div onclick="selectRecurring(this, 'daily')" class="recurring-option flex-1 text-center py-2 text-xs border border-slate-300 hover:border-slate-400 rounded-2xl cursor-pointer">Daily</div>
+                        <div onclick="selectRecurring(this, 'weekly')" class="recurring-option flex-1 text-center py-2 text-xs border border-slate-300 hover:border-slate-400 rounded-2xl cursor-pointer">Weekly</div>
+                        <div onclick="selectRecurring(this, 'monthly')" class="recurring-option flex-1 text-center py-2 text-xs border border-slate-300 hover:border-slate-400 rounded-2xl cursor-pointer">Monthly</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="hideAddTaskModal()" 
+                        class="flex-1 py-3 text-sm font-medium border border-slate-300 rounded-2xl">Cancel</button>
+                <button onclick="addTask()" 
+                        class="flex-1 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-2xl">Add Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div id="add-project-modal" onclick="if (event.target.id === 'add-project-modal') hideAddProjectModal()" 
+         class="hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="bg-white w-full sm:w-[420px] rounded-t-3xl sm:rounded-3xl p-6 modal">
+            <div class="flex justify-between items-center mb-5">
+                <div class="font-semibold text-xl">New Project</div>
+                <button onclick="hideAddProjectModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-medium text-slate-500 block mb-1.5">Project name</label>
+                    <input id="project-name" type="text" placeholder="e.g. Blue Mustang Flip" 
+                           class="w-full border border-slate-300 focus:border-blue-500 outline-none px-4 py-3 rounded-2xl text-sm">
+                </div>
+                
+                <div>
+                    <label class="text-xs font-medium text-slate-500 block mb-1.5">Purchase price</label>
+                    <div class="relative">
+                        <div class="absolute left-4 top-3.5 text-slate-400">$</div>
+                        <input id="project-cost" type="number" value="600" 
+                               class="w-full border border-slate-300 focus:border-blue-500 outline-none pl-8 pr-4 py-3 rounded-2xl text-sm">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="hideAddProjectModal()" 
+                        class="flex-1 py-3 text-sm font-medium border border-slate-300 rounded-2xl">Cancel</button>
+                <button onclick="addProject()" 
+                        class="flex-1 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-2xl">Create Project</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Detail Modal -->
+    <div id="project-detail-modal" onclick="if (event.target.id === 'project-detail-modal') hideProjectDetailModal()" 
+         class="hidden fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="bg-white w-full sm:w-[480px] rounded-t-3xl sm:rounded-3xl p-6 modal max-h-[90vh] overflow-auto">
+            
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <div id="project-detail-name" class="font-semibold text-2xl tracking-tight"></div>
+                    <div id="project-detail-status" class="text-xs px-3 py-0.5 bg-emerald-100 text-emerald-700 rounded-full w-fit mt-1"></div>
+                </div>
+                <button onclick="hideProjectDetailModal()" class="text-slate-400 hover:text-slate-600 mt-1">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="bg-slate-50 rounded-2xl p-3">
+                    <div class="text-xs text-slate-500">Purchase</div>
+                    <div id="project-detail-purchase" class="text-xl font-semibold stat-number"></div>
+                </div>
+                <div class="bg-slate-50 rounded-2xl p-3">
+                    <div class="text-xs text-slate-500">Spent so far</div>
+                    <div id="project-detail-spent" class="text-xl font-semibold stat-number"></div>
+                </div>
+                <div class="bg-slate-50 rounded-2xl p-3">
+                    <div class="text-xs text-slate-500">Hours logged</div>
+                    <div id="project-detail-hours" class="text-xl font-semibold stat-number"></div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex gap-2 mb-6">
+                <button onclick="logTime()" 
+                        class="flex-1 flex items-center justify-center gap-x-2 py-3 bg-white border border-slate-300 hover:bg-slate-50 text-sm font-medium rounded-2xl">
+                    <i class="fa-solid fa-clock"></i>
+                    <span>Log Time</span>
+                </button>
+                <button onclick="logMileage()" 
+                        class="flex-1 flex items-center justify-center gap-x-2 py-3 bg-white border border-slate-300 hover:bg-slate-50 text-sm font-medium rounded-2xl">
+                    <i class="fa-solid fa-road"></i>
+                    <span>Log Mileage</span>
+                </button>
+                <button onclick="addExpense()" 
+                        class="flex-1 flex items-center justify-center gap-x-2 py-3 bg-white border border-slate-300 hover:bg-slate-50 text-sm font-medium rounded-2xl">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Add Expense</span>
+                </button>
+            </div>
+            
+            <!-- Expenses List -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <div class="text-sm font-semibold">Expenses &amp; Costs</div>
+                </div>
+                <div id="project-expenses-list" class="space-y-2 text-sm">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Time Logs -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <div class="text-sm font-semibold">Time Logged</div>
+                </div>
+                <div id="project-time-list" class="space-y-2 text-sm">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Sell / Complete Button -->
+            <div class="pt-4 border-t">
+                <button onclick="markProjectSold()" 
+                        class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 transition-colors text-white font-semibold rounded-2xl flex items-center justify-center gap-x-2">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Mark as Sold &amp; Calculate Profit</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== DATA STORAGE ====================
+        let tasks = JSON.parse(localStorage.getItem('done_tasks')) || [
+            {
+                id: 1,
+                title: "Pick up lawnmower Tuesday",
+                due_date: "2026-06-11",
+                recurring: "none",
+                category: "lawn_tools",
+                completed: false,
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                title: "Buy brakes for Ford",
+                due_date: "2026-06-12",
+                recurring: "none",
+                category: "repairs",
+                completed: false,
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 3,
+                title: "Sweep up the garage",
+                due_date: "2026-06-10",
+                recurring: "daily",
+                category: "personal",
+                completed: true,
+                completed_at: new Date().toISOString(),
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 4,
+                title: "Work on Blue Mustang",
+                due_date: "2026-06-10",
+                recurring: "none",
+                category: "flips",
+                completed: false,
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 5,
+                title: "List toolbox on FB Marketplace",
+                due_date: "2026-06-13",
+                recurring: "none",
+                category: "flips",
+                completed: false,
+                created_at: new Date().toISOString()
+            }
+        ];
+        
+        let projects = JSON.parse(localStorage.getItem('done_projects')) || [
+            {
+                id: 1,
+                name: "Blue Mustang Flip",
+                purchase_cost: 600,
+                status: "active",
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                name: "Riding Lawn Mower Repair",
+                purchase_cost: 0,
+                status: "active",
+                created_at: new Date().toISOString()
+            }
+        ];
+        
+        let expenses = JSON.parse(localStorage.getItem('done_expenses')) || [
+            { id: 1, project_id: 1, description: "Purchase - Blue Mustang", amount: 600, date: "2026-06-05", category: "other" },
+            { id: 2, project_id: 1, description: "Brakes + rotors", amount: 285, date: "2026-06-07", category: "parts" },
+            { id: 3, project_id: 1, description: "Gas - 142 km", amount: 17.04, date: "2026-06-08", category: "gas" }
+        ];
+        
+        let timeLogs = JSON.parse(localStorage.getItem('done_time_logs')) || [
+            { id: 1, project_id: 1, hours: 1.5, date: "2026-06-05", description: "Initial inspection & purchase" },
+            { id: 2, project_id: 1, hours: 3, date: "2026-06-07", description: "Brake job" }
+        ];
+        
+        // Save to localStorage
+        function saveData() {
+            localStorage.setItem('done_tasks', JSON.stringify(tasks));
+            localStorage.setItem('done_projects', JSON.stringify(projects));
+            localStorage.setItem('done_expenses', JSON.stringify(expenses));
+            localStorage.setItem('done_time_logs', JSON.stringify(timeLogs));
+        }
+        
+        // ==================== TASKS ====================
+        function renderTasks() {
+            const container = document.getElementById('task-list');
+            container.innerHTML = '';
+            
+            const activeTasks = tasks
+                .filter(t => !t.completed)
+                .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+                .slice(0, 12);
+            
+            if (activeTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fa-solid fa-inbox text-3xl mb-3"></i>
+                        <div>All done for today!</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            activeTasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = `task-card bg-white border border-slate-200 rounded-3xl p-4 flex items-center justify-between cursor-pointer ${task.completed ? 'completed' : ''}`;
+                
+                const categoryColor = getCategoryColor(task.category);
+                const dueDateText = formatDueDate(task.due_date);
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-x-4 flex-1 min-w-0">
+                        <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${categoryColor}"></div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-slate-800 text-[15px] leading-tight">${task.title}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${dueDateText} • ${task.recurring !== 'none' ? task.recurring : 'one-time'}</div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="event.stopImmediatePropagation(); completeTask(${task.id}, this)" 
+                            class="big-button ml-4 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-2xl flex items-center gap-x-1.5 active:scale-[0.985]">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Done</span>
+                    </button>
+                `;
+                
+                card.onclick = () => {
+                    // Could open edit modal in future
+                    if (!task.completed) {
+                        completeTask(task.id, card.querySelector('button'));
+                    }
+                };
+                
+                container.appendChild(card);
+            });
+        }
+        
+        function getCategoryColor(category) {
+            const colors = {
+                'personal': '#64748b',
+                'repairs': '#f59e0b',
+                'flips': '#2563eb',
+                'lawn_tools': '#10b981',
+                'other': '#8b5cf6'
+            };
+            return colors[category] || '#64748b';
+        }
+        
+        function formatDueDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const diffTime = date - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return "Today";
+            if (diffDays === 1) return "Tomorrow";
+            if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        
+        function completeTask(taskId, buttonElement) {
+            const taskIndex = tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) return;
+            
+            const task = tasks[taskIndex];
+            
+            // Mark complete
+            task.completed = true;
+            task.completed_at = new Date().toISOString();
+            
+            // If recurring, create next occurrence
+            if (task.recurring && task.recurring !== 'none') {
+                createNextRecurringTask(task);
+            }
+            
+            saveData();
+            
+            // Nice animation
+            if (buttonElement) {
+                buttonElement.innerHTML = `<i class="fa-solid fa-check-double"></i> <span>Great!</span>`;
+                buttonElement.style.backgroundColor = '#166534';
+                
+                setTimeout(() => {
+                    renderTasks();
+                    updateStats();
+                }, 600);
+            } else {
+                renderTasks();
+                updateStats();
+            }
+        }
+        
+        function createNextRecurringTask(task) {
+            let nextDate = new Date(task.due_date);
+            
+            if (task.recurring === 'daily') {
+                nextDate.setDate(nextDate.getDate() + 1);
+            } else if (task.recurring === 'weekly') {
+                nextDate.setDate(nextDate.getDate() + 7);
+            } else if (task.recurring === 'monthly') {
+                nextDate.setMonth(nextDate.getMonth() + 1);
+            }
+            
+            const newTask = {
+                id: Date.now(),
+                title: task.title,
+                due_date: nextDate.toISOString().split('T')[0],
+                recurring: task.recurring,
+                category: task.category,
+                completed: false,
+                created_at: new Date().toISOString()
+            };
+            
+            tasks.push(newTask);
+        }
+        
+        function addTask() {
+            const title = document.getElementById('task-title').value.trim();
+            if (!title) {
+                alert("Please enter a task name");
+                return;
+            }
+            
+            const dueDate = document.getElementById('task-date').value;
+            const category = document.getElementById('task-category').value;
+            let recurringEl = document.querySelector('.recurring-option.border-blue-600');
+            const recurring = recurringEl ? recurringEl.dataset.value || 'none' : 'none';
+            
+            const newTask = {
+                id: Date.now(),
+                title: title,
+                due_date: dueDate,
+                recurring: recurring,
+                category: category,
+                completed: false,
+                created_at: new Date().toISOString()
+            };
+            
+            tasks.push(newTask);
+            saveData();
+            hideAddTaskModal();
+            renderTasks();
+            updateStats();
+        }
+        
+        function selectRecurring(element, value) {
+            // Deselect all
+            document.querySelectorAll('.recurring-option').forEach(el => {
+                el.classList.remove('border-blue-600', 'bg-blue-50', 'text-blue-700');
+                el.classList.add('border-slate-300');
+                delete el.dataset.value;
+            });
+            
+            // Select this one
+            element.classList.remove('border-slate-300');
+            element.classList.add('border-blue-600', 'bg-blue-50', 'text-blue-700');
+            element.dataset.value = value;
+        }
+        
+        function showAddTaskModal() {
+            document.getElementById('add-task-modal').classList.remove('hidden');
+            document.getElementById('add-task-modal').classList.add('flex');
+            
+            // Default recurring to none
+            setTimeout(() => {
+                const noneOption = Array.from(document.querySelectorAll('.recurring-option')).find(el => el.textContent.trim() === 'None');
+                if (noneOption) {
+                    selectRecurring(noneOption, 'none');
+                }
+            }, 100);
+        }
+        
+        function hideAddTaskModal() {
+            document.getElementById('add-task-modal').classList.remove('flex');
+            document.getElementById('add-task-modal').classList.add('hidden');
+            
+            // Clear form
+            document.getElementById('task-title').value = '';
+        }
+        
+        // ==================== PROJECTS ====================
+        function renderProjects() {
+            const container = document.getElementById('project-list');
+            container.innerHTML = '';
+            
+            const activeProjects = projects.filter(p => p.status === 'active');
+            
+            if (activeProjects.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-3xl">
+                        No active projects yet.
+                    </div>
+                `;
+                return;
+            }
+            
+            activeProjects.forEach(project => {
+                const projectExpenses = expenses.filter(e => e.project_id === project.id);
+                const projectTime = timeLogs.filter(t => t.project_id === project.id);
+                
+                const totalSpent = projectExpenses.reduce((sum, e) => sum + e.amount, 0);
+                const totalHours = projectTime.reduce((sum, t) => sum + t.hours, 0);
+                
+                const card = document.createElement('div');
+                card.className = `bg-white border border-slate-200 rounded-3xl p-5 cursor-pointer hover:border-blue-300 transition-colors`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-lg">${project.name}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Started ${new Date(project.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-emerald-600 font-medium">ACTIVE</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                            <div class="text-xs text-slate-500">Purchase</div>
+                            <div class="font-semibold">$${project.purchase_cost}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500">Spent</div>
+                            <div class="font-semibold">$${totalSpent}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500">Hours</div>
+                            <div class="font-semibold">${totalHours}</div>
+                        </div>
+                    </div>
+                `;
+                
+                card.onclick = () => showProjectDetail(project.id);
+                container.appendChild(card);
+            });
+        }
+        
+        function showAddProjectModal() {
+            document.getElementById('add-project-modal').classList.remove('hidden');
+            document.getElementById('add-project-modal').classList.add('flex');
+        }
+        
+        function hideAddProjectModal() {
+            document.getElementById('add-project-modal').classList.remove('flex');
+            document.getElementById('add-project-modal').classList.add('hidden');
+            document.getElementById('project-name').value = '';
+        }
+        
+        function addProject() {
+            const name = document.getElementById('project-name').value.trim();
+            const cost = parseFloat(document.getElementById('project-cost').value) || 0;
+            
+            if (!name) {
+                alert("Please enter a project name");
+                return;
+            }
+            
+            const newProject = {
+                id: Date.now(),
+                name: name,
+                purchase_cost: cost,
+                status: "active",
+                created_at: new Date().toISOString()
+            };
+            
+            projects.push(newProject);
+            saveData();
+            hideAddProjectModal();
+            renderProjects();
+            
+            // Also add as a task on dashboard
+            const taskTitle = `Work on ${name}`;
+            tasks.push({
+                id: Date.now() + 1,
+                title: taskTitle,
+                due_date: new Date().toISOString().split('T')[0],
+                recurring: "none",
+                category: "flips",
+                completed: false,
+                created_at: new Date().toISOString()
+            });
+            saveData();
+            renderTasks();
+        }
+        
+        let currentProjectId = null;
+        
+        function showProjectDetail(projectId) {
+            currentProjectId = projectId;
+            const project = projects.find(p => p.id === projectId);
+            if (!project) return;
+            
+            const projectExpenses = expenses.filter(e => e.project_id === projectId);
+            const projectTime = timeLogs.filter(t => t.project_id === projectId);
+            
+            const totalSpent = projectExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const totalHours = projectTime.reduce((sum, t) => sum + t.hours, 0);
+            
+            // Fill modal
+            document.getElementById('project-detail-name').textContent = project.name;
+            document.getElementById('project-detail-status').textContent = project.status.toUpperCase();
+            document.getElementById('project-detail-purchase').textContent = '$' + project.purchase_cost;
+            document.getElementById('project-detail-spent').textContent = '$' + totalSpent.toFixed(2);
+            document.getElementById('project-detail-hours').textContent = totalHours;
+            
+            // Expenses list
+            const expContainer = document.getElementById('project-expenses-list');
+            expContainer.innerHTML = '';
+            
+            if (projectExpenses.length === 0) {
+                expContainer.innerHTML = `<div class="text-xs text-slate-400 px-2">No expenses yet</div>`;
+            } else {
+                projectExpenses.forEach(exp => {
+                    const row = document.createElement('div');
+                    row.className = `flex justify-between items-center px-3 py-2 bg-slate-50 rounded-2xl text-sm`;
+                    row.innerHTML = `
+                        <div>
+                            <div>${exp.description}</div>
+                            <div class="text-[10px] text-slate-400">${exp.date} • ${exp.category}</div>
+                        </div>
+                        <div class="font-semibold">$${exp.amount}</div>
+                    `;
+                    expContainer.appendChild(row);
+                });
+            }
+            
+            // Time list
+            const timeContainer = document.getElementById('project-time-list');
+            timeContainer.innerHTML = '';
+            
+            if (projectTime.length === 0) {
+                timeContainer.innerHTML = `<div class="text-xs text-slate-400 px-2">No time logged yet</div>`;
+            } else {
+                projectTime.forEach(log => {
+                    const row = document.createElement('div');
+                    row.className = `flex justify-between items-center px-3 py-2 bg-slate-50 rounded-2xl text-sm`;
+                    row.innerHTML = `
+                        <div>
+                            <div>${log.description || 'Work session'}</div>
+                            <div class="text-[10px] text-slate-400">${log.date}</div>
+                        </div>
+                        <div class="font-semibold">${log.hours} hrs</div>
+                    `;
+                    timeContainer.appendChild(row);
+                });
+            }
+            
+            // Show modal
+            document.getElementById('project-detail-modal').classList.remove('hidden');
+            document.getElementById('project-detail-modal').classList.add('flex');
+        }
+        
+        function hideProjectDetailModal() {
+            document.getElementById('project-detail-modal').classList.remove('flex');
+            document.getElementById('project-detail-modal').classList.add('hidden');
+        }
+        
+        function logTime() {
+            const hours = prompt("How many hours did you work? (e.g. 2.5)");
+            if (!hours || isNaN(parseFloat(hours))) return;
+            
+            const description = prompt("What did you work on? (optional)") || "Work session";
+            
+            timeLogs.push({
+                id: Date.now(),
+                project_id: currentProjectId,
+                hours: parseFloat(hours),
+                date: new Date().toISOString().split('T')[0],
+                description: description
+            });
+            
+            saveData();
+            hideProjectDetailModal();
+            renderProjects();
+            
+            // Reopen the detail modal with updated data
+            setTimeout(() => {
+                showProjectDetail(currentProjectId);
+            }, 300);
+        }
+        
+        function logMileage() {
+            const kmStr = prompt("Kilometers driven for this project? (e.g. 45)");
+            if (!kmStr || isNaN(parseFloat(kmStr))) return;
+            
+            const kilometers = parseFloat(kmStr);
+            
+            // Updated: 12L per 100km * $1.60/L
+            const liters = (kilometers / 100) * 12;
+            const gasCost = liters * 1.60;
+            
+            const confirmMsg = `You drove ${kilometers} km.\n\nFuel used: ${liters.toFixed(1)} liters\nGas cost: $${gasCost.toFixed(2)}\n\nAdd this as an expense?`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            expenses.push({
+                id: Date.now(),
+                project_id: currentProjectId,
+                description: `Gas - ${kilometers} km`,
+                amount: parseFloat(gasCost.toFixed(2)),
+                date: new Date().toISOString().split('T')[0],
+                category: "gas"
+            });
+            
+            saveData();
+            hideProjectDetailModal();
+            renderProjects();
+            
+            setTimeout(() => {
+                showProjectDetail(currentProjectId);
+            }, 300);
+        }
+        
+        function addExpense() {
+            const description = prompt("Expense description (e.g. New tires)");
+            if (!description) return;
+            
+            const amount = prompt("Amount spent?");
+            if (!amount || isNaN(parseFloat(amount))) return;
+            
+            expenses.push({
+                id: Date.now(),
+                project_id: currentProjectId,
+                description: description,
+                amount: parseFloat(amount),
+                date: new Date().toISOString().split('T')[0],
+                category: "parts"
+            });
+            
+            saveData();
+            hideProjectDetailModal();
+            renderProjects();
+            
+            setTimeout(() => {
+                showProjectDetail(currentProjectId);
+            }, 300);
+        }
+        
+        function markProjectSold() {
+            if (!confirm("Mark this project as sold? This will calculate your profit and hourly rate.")) return;
+            
+            const project = projects.find(p => p.id === currentProjectId);
+            if (!project) return;
+            
+            const projectExpenses = expenses.filter(e => e.project_id === currentProjectId);
+            const projectTime = timeLogs.filter(t => t.project_id === currentProjectId);
+            
+            const totalSpent = projectExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const totalHours = projectTime.reduce((sum, t) => sum + t.hours, 0);
+            
+            const salePrice = parseFloat(prompt("What was the sale price?") || "0");
+            if (!salePrice) return;
+            
+            const grossProfit = salePrice - project.purchase_cost - totalSpent;
+            const hourlyRate = totalHours > 0 ? (grossProfit / totalHours) : 0;
+            
+            project.status = "sold";
+            project.sale_price = salePrice;
+            
+            saveData();
+            hideProjectDetailModal();
+            renderProjects();
+            
+            // Show nice profit summary
+            setTimeout(() => {
+                alert(`🎉 Project Complete!\n\n` +
+                      `Gross Profit: $${grossProfit.toFixed(2)}\n` +
+                      `Hours Worked: ${totalHours}\n` +
+                      `Effective Hourly Rate: $${hourlyRate.toFixed(2)}/hr\n\n` +
+                      `Great work!`);
+            }, 400);
+        }
+        
+        // ==================== REPORTS ====================
+        function showReports() {
+            const totalTasksCompleted = tasks.filter(t => t.completed).length;
+            const totalProjects = projects.length;
+            const soldProjects = projects.filter(p => p.status === 'sold');
+            
+            let totalRevenue = 0;
+            let totalCosts = 0;
+            
+            soldProjects.forEach(proj => {
+                const projExpenses = expenses.filter(e => e.project_id === proj.id);
+                const projTime = timeLogs.filter(t => t.project_id === proj.id);
+                const totalSpent = projExpenses.reduce((sum, e) => sum + e.amount, 0);
+                
+                totalRevenue += proj.sale_price || 0;
+                totalCosts += proj.purchase_cost + totalSpent;
+            });
+            
+            const profit = totalRevenue - totalCosts;
+            
+            const reportHTML = `
+                <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-white w-full max-w-md mx-4 rounded-3xl p-6 modal">
+                        <div class="flex justify-between mb-5">
+                            <div class="font-semibold text-2xl">Reports</div>
+                            <button onclick="event.target.closest('.fixed').remove()" class="text-slate-400">✕</button>
+                        </div>
+                        
+                        <div class="space-y-5">
+                            <div class="metric-card rounded-3xl p-5">
+                                <div class="text-xs text-slate-500 mb-1">THIS MONTH</div>
+                                <div class="text-4xl font-semibold tracking-tighter">$${profit.toFixed(0)}</div>
+                                <div class="text-emerald-600 text-sm">Net profit from flips</div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="metric-card rounded-3xl p-4">
+                                    <div class="text-xs text-slate-500">Tasks Completed</div>
+                                    <div class="text-3xl font-semibold mt-1">${totalTasksCompleted}</div>
+                                </div>
+                                <div class="metric-card rounded-3xl p-4">
+                                    <div class="text-xs text-slate-500">Projects Finished</div>
+                                    <div class="text-3xl font-semibold mt-1">${soldProjects.length}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-xs text-center text-slate-400 pt-2">
+                                Full reports with charts coming in the real app.<br>
+                                This prototype shows the idea.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', reportHTML);
+        }
+        
+        function updateStats() {
+            // Could update header stats here if wanted
+        }
+        
+        // ==================== TAB SWITCHING ====================
+        function switchTab(tab) {
+            // Hide all
+            document.getElementById('dashboard-tab').classList.add('hidden');
+            document.getElementById('projects-tab').classList.add('hidden');
+            
+            // Remove active from all tabs
+            document.getElementById('tab-dashboard').classList.remove('active');
+            document.getElementById('tab-projects').classList.remove('active');
+            
+            if (tab === 'dashboard') {
+                document.getElementById('dashboard-tab').classList.remove('hidden');
+                document.getElementById('tab-dashboard').classList.add('active');
+                renderTasks();
+            } else {
+                document.getElementById('projects-tab').classList.remove('hidden');
+                document.getElementById('tab-projects').classList.add('active');
+                renderProjects();
+            }
+        }
+        
+        // ==================== INITIALIZE ====================
+        function initializeApp() {
+            // Set today's date as default in add task modal
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('task-date');
+            if (dateInput) dateInput.value = today;
+            
+            // Render initial data
+            renderTasks();
+            renderProjects();
+            
+            // Keyboard support for modals
+            document.addEventListener('keydown', function(e) {
+                if (e.key === "Escape") {
+                    const modals = document.querySelectorAll('.fixed.inset-0');
+                    if (modals.length > 0) {
+                        modals[modals.length - 1].remove();
+                    } else {
+                        // Close any open modal
+                        const openModals = document.querySelectorAll('.flex[id$="-modal"]');
+                        openModals.forEach(modal => {
+                            modal.classList.remove('flex');
+                            modal.classList.add('hidden');
+                        });
+                    }
+                }
+                
+                if (e.key === "/" && document.activeElement.tagName === "BODY") {
+                    e.preventDefault();
+                    showAddTaskModal();
+                }
+            });
+            
+            // Welcome message for first time
+            if (!localStorage.getItem('done_welcome_shown')) {
+                setTimeout(() => {
+                    console.log('%c[Done] Prototype ready. Try adding a task or project!', 'color:#64748b');
+                    localStorage.setItem('done_welcome_shown', 'true');
+                }, 1200);
+            }
+            
+            // Make sure recurring options have data-value
+            document.querySelectorAll('.recurring-option').forEach(el => {
+                if (!el.dataset.value) el.dataset.value = el.textContent.toLowerCase();
+            });
+        }
+        
+        // Boot the app
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
