@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Plus, CheckCircle, Wrench, DollarSign, TrendingUp, Folder, ClipboardList, Loader2, Trash2 } from 'lucide-react';
 
 // Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function App() {
