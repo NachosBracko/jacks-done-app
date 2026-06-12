@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Plus, CheckCircle, Wrench, DollarSign, TrendingUp, Folder, ClipboardList, Loader2, Trash2 } from 'lucide-react';
 
 // Initialize Supabase client
-const supabaseUrl = "https://supabase.com/dashboard/project/ltoznkvvnpaseaubtwcx";
+const supabaseUrl = "https://ltoznkvvnpaseaubtwcx.supabase.co";
 const supabaseAnonKey = "sb_publishable_JduwaTMFShYDGBsjO3waMg_8wy7TqWG";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
