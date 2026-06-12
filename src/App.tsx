@@ -11,51 +11,52 @@ export default function App() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects'>('dashboard');
+  const [loading, setLoading] = useState<boolean>(true);
   const [status, setStatus] = useState<string>('Loading...');
 
-  // Form states for adding new items
+  // Form states
   const [newTaskName, setNewTaskName] = useState('');
-  
   const [newProjectName, setNewProjectName] = useState('');
   const [newPurchaseCost, setNewPurchaseCost] = useState('');
   const [newSalePrice, setNewSalePrice] = useState('');
 
-  // Load data from Supabase when the app starts
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
+      setLoading(true);
       setStatus('Loading application data...');
-      
-      // 1. Fetch incomplete tasks
+
+      // Fetch active tasks
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
-        .not('completed', 'is', true)
+        .eq('completed', false)
         .order('created_at', { ascending: false });
 
       if (tasksError) throw tasksError;
-      setTasks(tasksData || []);
 
-      // 2. Fetch projects from schema in image_5e34d7.jpg
+      // Fetch projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (projectsError) throw projectsError;
-      setProjects(projectsData || []);
 
-      setStatus('Ready');
+      setTasks(tasksData || []);
+      setProjects(projectsData || []);
+      setStatus('All systems green.');
     } catch (err: any) {
       console.error('Error fetching data:', err);
-      setStatus(`Error: ${err.message}`);
+      setStatus(`Error: ${err.message || 'Failed to fetch'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- TASK ACTIONS ---
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskName.trim()) return;
@@ -63,10 +64,11 @@ export default function App() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{ name: newTaskName, completed: false }])
+        .insert([{ name: newTaskName.trim(), completed: false }])
         .select();
 
       if (error) throw error;
+
       setTasks([data[0], ...tasks]);
       setNewTaskName('');
     } catch (err: any) {
@@ -88,53 +90,38 @@ export default function App() {
     }
   };
 
-  // --- PROJECT ACTIONS (image_5e34d7.jpg Mapping) ---
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
 
     try {
+      const purchase = parseFloat(newPurchaseCost) || 0;
+      const sale = parseFloat(newSalePrice) || 0;
+      const profit = sale - purchase;
+
       const { data, error } = await supabase
         .from('projects')
-        .insert([
-          {
-            name: newProjectName,
-            purchase_cost: parseFloat(newPurchaseCost) || 0,
-            sale_price: parseFloat(newSalePrice) || 0,
-            status: 'In Progress'
-          }
-        ])
+        .insert([{ 
+          name: newProjectName.trim(), 
+          purchase_cost: purchase, 
+          sale_price: sale, 
+          profit: profit 
+        }])
         .select();
 
       if (error) throw error;
+
       setProjects([data[0], ...projects]);
-      
-      // Reset form fields
       setNewProjectName('');
       setNewPurchaseCost('');
       setNewSalePrice('');
     } catch (err: any) {
-      alert(`Failed to create project: ${err.message}`);
-    }
-  };
-
-  const handleUpdateProjectStatus = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'In Progress' ? 'Completed' : 'In Progress';
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ status: nextStatus })
-        .eq('id', id);
-
-      if (error) throw error;
-      setProjects(projects.map(p => p.id === id ? { ...p, status: nextStatus } : p));
-    } catch (err: any) {
-      alert(`Failed to update project: ${err.message}`);
+      alert(`Failed to add project: ${err.message}`);
     }
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this project?')) return;
+    if (!confirm('Are you sure you want to delete this project?')) return;
     try {
       const { error } = await supabase
         .from('projects')
@@ -148,254 +135,248 @@ export default function App() {
     }
   };
 
-  // --- FINANCIAL CALCULATION ENGINE ---
-  const totalInvested = projects.reduce((acc, p) => acc + (p.purchase_cost || 0), 0);
-  const totalRevenue = projects.reduce((acc, p) => acc + (p.sale_price || 0), 0);
-  const netReturn = totalRevenue - totalInvested;
+  // Metrics calculations
+  const totalProfit = projects.reduce((sum, p) => sum + (p.profit || 0), 0);
+  const activeProjectsCount = projects.length;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans antialiased">
-      {/* Dynamic App Header */}
-      <header className="border-b border-slate-800 bg-[#1e293b]/50 backdrop-blur sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
-            <CheckCircle className="w-6 h-6" />
-          </div>
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+      {/* Header */}
+      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-10 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Done</h1>
-            <p className="text-xs text-slate-400 font-medium">Jack's Operations Center</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              <ClipboardList className="text-blue-500 h-8 w-8" /> Done
+            </h1>
+            <p className="text-sm text-slate-400 mt-1">Jack's Operations Center</p>
           </div>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <ClipboardList className="w-4 h-4" />
-            Tasks ({tasks.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('projects')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'projects' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Wrench className="w-4 h-4" />
-            Projects ({projects.length})
-          </button>
+          
+          <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2 rounded-lg border border-slate-700/50 text-xs text-slate-300">
+            <span className={`h-2 w-2 rounded-full ${status.includes('Error') ? 'bg-red-500 animate-pulse' : loading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+            {status}
+          </div>
         </div>
       </header>
 
-      {/* Main Workspace Area */}
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
         
-        {/* Sync Status Banner */}
-        {status !== 'Ready' && (
-          <div className="mb-6 flex items-center gap-3 bg-blue-950/40 border border-blue-800/50 rounded-xl px-4 py-3 text-sm text-blue-300">
-            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-            <span>{status}</span>
+        {/* Metric Cards Banner */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400">
+              <ClipboardList className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Active Tasks</p>
+              <p className="text-2xl font-bold text-white mt-0.5">{tasks.length}</p>
+            </div>
           </div>
-        )}
 
-        {/* === TAB 1: TASKS DASHBOARD === */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Inline Task Creator */}
-            <form onSubmit={handleAddTask} className="flex gap-3 bg-[#1e293b] p-3 rounded-xl border border-slate-800 shadow-xl">
-              <input 
-                type="text" 
-                placeholder="What mechanical service or operation needs handling next?" 
-                value={newTaskName}
-                onChange={(e) => setNewTaskName(e.target.value)}
-                className="flex-1 bg-slate-900 border border-slate-700/60 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-500"
-              />
-              <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-5 py-2 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-500/10">
-                <Plus className="w-4 h-4" /> Add Task
-              </button>
-            </form>
+          <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 flex items-center gap-4">
+            <div className="p-3 bg-purple-500/10 rounded-lg text-purple-400">
+              <Folder className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Projects</p>
+              <p className="text-2xl font-bold text-white mt-0.5">{activeProjectsCount}</p>
+            </div>
+          </div>
 
-            {/* Task Render Stack */}
-            <div className="space-y-3">
-              {tasks.length === 0 && status === 'Ready' ? (
-                <div className="text-center py-12 border border-dashed border-slate-800 rounded-2xl text-slate-500 bg-[#1e293b]/20">
-                  All systems green. No active maintenance tasks pending.
-                </div>
-              ) : (
-                tasks.map((task) => (
-                  <div key={task.id} className="flex items-center justify-between p-4 bg-[#1e293b] rounded-xl border border-slate-800 hover:border-slate-700 transition group shadow-md">
-                    <div className="flex items-center gap-4">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></div>
-                      <span className="text-sm font-medium text-slate-200">{task.name}</span>
-                    </div>
-                    <button 
-                      onClick={() => handleCompleteTask(task.id)}
-                      className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                    >
-                      ✓ Done
-                    </button>
+          <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 flex items-center gap-4">
+            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Net Tracked Profit</p>
+              <p className="text-2xl font-bold text-emerald-400 mt-0.5">${totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-slate-800 gap-2">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${activeTab === 'dashboard' ? 'border-blue-500 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            <Wrench className="h-4 w-4" /> Operations Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${activeTab === 'projects' ? 'border-purple-500 text-purple-400 bg-purple-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            <Folder className="h-4 w-4" /> Project Ledger
+          </button>
+        </div>
+
+        {/* Tab Layout Screens */}
+        {activeTab === 'dashboard' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left/Middle Column: Tasks Panel */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <ClipboardList className="text-blue-400 h-5 w-5" /> Live Action Items
+                </h2>
+
+                <form onSubmit={handleAddTask} className="flex gap-2 mb-6">
+                  <input
+                    type="text"
+                    value={newTaskName}
+                    onChange={(e) => setNewTaskName(e.target.value)}
+                    placeholder="What mechanical service or operational item needs resolution?"
+                    className="flex-1 bg-slate-900 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors shrink-0 shadow-lg shadow-blue-600/10">
+                    <Plus className="h-4 w-4" /> Add Task
+                  </button>
+                </form>
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                    <p className="text-xs">Querying secure records...</p>
                   </div>
-                ))
-              )}
+                ) : tasks.length === 0 ? (
+                  <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl text-slate-500">
+                    <CheckCircle className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                    <p className="text-sm font-medium text-slate-400">All systems green</p>
+                    <p className="text-xs mt-0.5">No active maintenance tasks pending.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-800/60">
+                    {tasks.map((task) => (
+                      <div key={task.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0 group">
+                        <span className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{task.name}</span>
+                        <button
+                          onClick={() => handleCompleteTask(task.id)}
+                          className="text-xs bg-slate-800 hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-400 border border-slate-700/60 hover:border-emerald-700/50 px-3 py-1.5 rounded-md flex items-center gap-1 transition-all"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" /> Complete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Mini Info Cards */}
+            <div className="space-y-4">
+              <div className="bg-gradient-to-br from-blue-900/20 to-slate-800/40 border border-blue-500/10 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-2">Operational Insight</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  This interface provides immediate state persistence straight to your live cloud architecture. Use this panel to track mechanical service flows, flipping tasks, and deployment conditions safely.
+                </p>
+              </div>
             </div>
           </div>
-        )}
+        ) : (
+          /* Projects Ledger Tab Screen */
+          <div className="space-y-6">
+            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Folder className="text-purple-400 h-5 w-5" /> Financial Ledger & Tracked Assets
+              </h2>
 
-        {/* === TAB 2: PROJECTS WORKSPACE === */}
-        {activeTab === 'projects' && (
-          <div className="space-y-8">
-            
-            {/* Financial Overview KPI Ribbon */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-[#1e293b] p-5 rounded-xl border border-slate-800 flex items-center gap-4 shadow-md">
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Capital Invested</p>
-                  <p className="text-xl font-bold mt-0.5 text-slate-100">${totalInvested.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                </div>
-              </div>
-
-              <div className="bg-[#1e293b] p-5 rounded-xl border border-slate-800 flex items-center gap-4 shadow-md">
-                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Projected Revenue</p>
-                  <p className="text-xl font-bold mt-0.5 text-slate-100">${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                </div>
-              </div>
-
-              <div className="bg-[#1e293b] p-5 rounded-xl border border-slate-800 flex items-center gap-4 shadow-md">
-                <div className={`p-3 rounded-lg ${netReturn >= 0 ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'}`}>
-                  <Folder className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Portfolio Return</p>
-                  <p className={`text-xl font-bold mt-0.5 ${netReturn >= 0 ? 'text-blue-400' : 'text-rose-400'}`}>
-                    {netReturn >= 0 ? '' : '-'}${Math.abs(netReturn).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Custom Project Deployment Form */}
-            <form onSubmit={handleAddProject} className="bg-[#1e293b] p-5 rounded-xl border border-slate-800 shadow-xl space-y-4">
-              <h3 className="text-sm font-bold tracking-wide text-slate-300 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-blue-500" /> Track New Shop Build or Flip
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-400">Project Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., Ford F-150 Service or Bike Flip" 
+              {/* Form Input Grid */}
+              <form onSubmit={handleAddProject} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Asset Name / Description</label>
+                  <input
+                    type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
-                    className="bg-slate-900 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., Vehicle Flip #1 or Shop Equipment"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                   />
                 </div>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-400">Purchase Cost / Parts Budget ($)</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    placeholder="0.00" 
-                    value={newPurchaseCost}
-                    onChange={(e) => setNewPurchaseCost(e.target.value)}
-                    className="bg-slate-900 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                  />
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Purchase / Base Cost ($)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-500 text-sm"><DollarSign className="h-3.5 w-3.5" /></span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newPurchaseCost}
+                      onChange={(e) => setNewPurchaseCost(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
                 </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-400">Target Sale / Valuation ($)</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    placeholder="0.00" 
-                    value={newSalePrice}
-                    onChange={(e) => setNewSalePrice(e.target.value)}
-                    className="bg-slate-900 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                  />
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Expected / Sale Price ($)</label>
+                  <div className="relative flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2.5 text-slate-500 text-sm"><DollarSign className="h-3.5 w-3.5" /></span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newSalePrice}
+                        onChange={(e) => setNewSalePrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-purple-600/10 flex items-center self-end h-[38px]">
+                      Track
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </form>
 
-              <div className="flex justify-end pt-2">
-                <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-6 py-2 rounded-lg transition shadow-lg shadow-blue-500/10 flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Deploy Project Workspace
-                </button>
-              </div>
-            </form>
-
-            {/* Project List Stack */}
-            <div className="space-y-4">
-              {projects.length === 0 && status === 'Ready' ? (
-                <div className="text-center py-16 border border-dashed border-slate-800 rounded-2xl text-slate-500 bg-[#1e293b]/20">
-                  No operational metrics logged yet. Start a project above to run calculations.
+              {/* Data Table */}
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500 gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                  <p className="text-xs">Querying asset balances...</p>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl text-slate-500">
+                  <Folder className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                  <p className="text-sm font-medium text-slate-400">Ledger empty</p>
+                  <p className="text-xs mt-0.5">No investments or tracked assets loaded yet.</p>
                 </div>
               ) : (
-                projects.map((project) => {
-                  const projectMargin = (project.sale_price || 0) - (project.purchase_cost || 0);
-                  return (
-                    <div key={project.id} className="bg-[#1e293b] border border-slate-800 rounded-xl overflow-hidden shadow-md hover:border-slate-700/80 transition duration-200">
-                      
-                      {/* Project Header Row */}
-                      <div className="px-5 py-4 border-b border-slate-800/60 bg-slate-900/30 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${project.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'} shadow-sm`}></div>
-                          <h4 className="font-bold text-base text-slate-100">{project.name}</h4>
-                          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${project.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                            {project.status || 'In Progress'}
-                          </span>
-                        </div>
-                        
-                        {/* Interactive Management Row */}
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleUpdateProjectStatus(project.id, project.status)}
-                            className={`px-3 py-1 rounded-md text-xs font-bold border transition ${project.status === 'Completed' ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500 hover:text-white'}`}
-                          >
-                            {project.status === 'Completed' ? '↩ Reopen Build' : '✓ Mark Completed'}
-                          </button>
-                          
-                          <button 
-                            onClick={() => handleDeleteProject(project.id)}
-                            className="p-1.5 rounded-md border border-slate-800 bg-slate-900/50 text-slate-500 hover:text-rose-400 hover:border-rose-500/20 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Internal Accounting Data View */}
-                      <div className="grid grid-cols-3 divide-x divide-slate-800/60 bg-slate-900/10 text-center py-3.5">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Input Cost</p>
-                          <p className="text-sm font-bold text-slate-200 mt-0.5">${(project.purchase_cost || 0).toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Valuation</p>
-                          <p className="text-sm font-bold text-slate-200 mt-0.5">${(project.sale_price || 0).toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spread / Margin</p>
-                          <p className={`text-sm font-black mt-0.5 ${projectMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {projectMargin >= 0 ? '+' : '-'}${Math.abs(projectMargin).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })
+                <div className="overflow-x-auto rounded-xl border border-slate-800">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900/80 border-b border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <th className="p-4">Project / Asset Name</th>
+                        <th className="p-4">Purchase Cost</th>
+                        <th className="p-4">Sale Price</th>
+                        <th className="p-4">Net Profit</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50 bg-slate-900/10">
+                      {projects.map((project) => (
+                        <tr key={project.id} className="hover:bg-slate-800/30 transition-colors group">
+                          <td className="p-4 text-sm font-medium text-slate-200">{project.name}</td>
+                          <td className="p-4 text-sm text-slate-400">${(project.purchase_cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                          <td className="p-4 text-sm text-slate-400">${(project.sale_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                          <td className={`p-4 text-sm font-semibold ${project.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ${(project.profit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                          </td>
+                          <td className="p-4 text-sm text-right">
+                            <button
+                              onClick={() => handleDeleteProject(project.id)}
+                              className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/5 transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-
           </div>
         )}
-
       </main>
     </div>
   );
