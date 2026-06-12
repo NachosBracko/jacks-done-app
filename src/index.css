@@ -1,32 +1,170 @@
-body {
-  margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #0f172a;
-  color: #f1f5f9;
-}
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { Plus, CheckCircle2, LayoutDashboard, Wrench } from 'lucide-react';
 
-#root {
-  max-width: 100%;
-  margin: 0 auto;
-}
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
-.big-button {
-  padding: 16px 24px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  border-radius: 14px;
-  border: none;
-  transition: all 0.15s ease;
-}
+export default function App() {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects'>('dashboard');
+  const [status, setStatus] = useState('Loading...');
 
-.big-button:active {
-  transform: scale(0.96);
-}
+  // Load data from Supabase when the app starts
+  useEffect(() => {
+    loadData();
+  }, []);
 
-.task-card {
-  transition: all 0.2s ease;
-}
+  const loadData = async () => {
+    try {
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .not('completed', 'is', true) 
+        .order('created_at', { ascending: false });
 
-.task-card:active {
-  transform: scale(0.985);
+      const { data: projectsData } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (tasksError) throw tasksError;
+
+      setTasks(tasksData || []);
+      setProjects(projectsData || []);
+      setStatus(`✅ Connected | ${tasksData?.length || 0} active tasks`);
+    } catch (error: any) {
+      console.error('Supabase error:', error);
+      setStatus('❌ Connection Error');
+    }
+  };
+
+  const addTask = async () => {
+    const title = prompt('Task name?');
+    if (!title) return;
+
+    const { error } = await supabase.from('tasks').insert([{
+      title,
+      due_date: new Date().toISOString().split('T')[0],
+      category: 'Personal',
+      completed: false
+    }]);
+
+    if (error) {
+      alert('Error saving task: ' + error.message);
+    } else {
+      loadData();
+    }
+  };
+
+  const completeTask = async (id: string) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ completed: true })
+      .eq('id', id);
+
+    if (error) {
+      alert('Error updating task: ' + error.message);
+    } else {
+      loadData();
+    }
+  };
+
+  return (
+    <div className="min-h-screen p-4">
+      <div className="max-w-2xl mx-auto">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 mt-2">
+          <h1 className="text-4xl font-extrabold flex items-center gap-3 tracking-tight">
+            <CheckCircle2 className="text-blue-500" size={36} /> Done
+          </h1>
+          <div className="text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full font-mono text-slate-400">
+            {status}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex bg-slate-900 rounded-2xl p-1 mb-8 border border-slate-800/50">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/10' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard size={18} /> Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'projects' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/10' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Wrench size={18} /> Projects
+          </button>
+        </div>
+
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div>
+            {/* BIG BUTTON CLASS USED HERE */}
+            <button
+              onClick={addTask}
+              className="big-button w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-blue-600/10 cursor-pointer"
+            >
+              <Plus size={20} /> Add New Task
+            </button>
+
+            <h2 className="text-xl font-bold mb-4 text-slate-300 mt-8">Today's Priorities</h2>
+
+            <div className="space-y-3">
+              {tasks.length === 0 && (
+                <div className="text-center py-12 bg-slate-900/40 rounded-3xl border border-dashed border-slate-800">
+                  <p className="text-slate-500 font-medium">All clear! No pending tasks.</p>
+                </div>
+              )}
+              {tasks.map((task) => (
+                /* TASK CARD CLASS USED HERE */
+                <div key={task.id} className="task-card bg-slate-900/90 rounded-3xl p-5 flex justify-between items-center border border-slate-800/80 shadow-sm">
+                  <div>
+                    <div className="font-semibold text-lg text-slate-100 tracking-wide">{task.title}</div>
+                    <div className="text-xs font-medium text-slate-400 mt-1 flex items-center gap-2">
+                      <span className="bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700/50 uppercase tracking-wider text-[10px]">{task.category}</span>
+                      <span>•</span>
+                      <span>🕒 {task.due_date}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => completeTask(task.id)}
+                    className="bg-green-600 hover:bg-green-500 active:scale-95 transition-all px-5 py-2.5 rounded-2xl text-xs font-bold text-white tracking-wide cursor-pointer shadow-md shadow-green-600/5"
+                  >
+                    Done
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Projects Tab */}
+        {activeTab === 'projects' && (
+          <div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-slate-800/80 shadow-inner">
+            <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-500">
+              <Wrench size={24} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-200 mb-2">Projects Tracker</h2>
+            <p className="text-slate-400 max-w-sm mx-auto px-6 text-sm leading-relaxed">
+              Car flips, incoming maintenance work, and active service logs will build out right here.
+            </p>
+            <div className="inline-block bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-3 py-1 rounded-full font-semibold mt-6 tracking-wide uppercase">
+              Coming in next update
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
