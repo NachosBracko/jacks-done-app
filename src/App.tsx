@@ -4,7 +4,7 @@ import { Plus, CheckCircle, Wrench, DollarSign, TrendingUp, Folder, ClipboardLis
 
 // Initialize Supabase client
 const supabaseUrl = "https://ltoznkvnpaseaubtwcx.supabase.co";
-const supabaseAnonKey = "sb_secret_bgBu-Gb9YkYZquOAVv9_yQ_LLwON-oY";
+const supabaseAnonKey = "sb_publishable_JduwaTMFShYDGBsjO3waMg_8wy7TqWG";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function App() {
