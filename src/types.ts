@@ -1,7 +1,23 @@
-export type Category = 'personal' | 'business' | 'car' | 'health' | 'finance' | 'other'
+export type Category = 'personal' | 'repairs' | 'carflips' | 'mpflips' | 'other'
 export type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly'
 export type TaskStatus = 'active' | 'done'
 export type ProjectStatus = 'active' | 'sold'
+
+export const CATEGORIES: { value: Category; label: string }[] = [
+  { value: 'personal', label: 'Personal' },
+  { value: 'repairs', label: 'Repairs' },
+  { value: 'carflips', label: 'Car Flips' },
+  { value: 'mpflips', label: 'MP Flips' },
+  { value: 'other', label: 'Other' },
+]
+
+export const CATEGORY_LABEL: Record<Category, string> = {
+  personal: 'Personal',
+  repairs: 'Repairs',
+  carflips: 'Car Flips',
+  mpflips: 'MP Flips',
+  other: 'Other',
+}
 
 export interface Task {
   id: string
@@ -57,7 +73,6 @@ export interface ProjectMileageLog {
   created_at: string
 }
 
-// Derived / computed
 export interface ProjectSummary extends Project {
   expenses: ProjectExpense[]
   time_logs: ProjectTimeLog[]
@@ -65,6 +80,7 @@ export interface ProjectSummary extends Project {
   total_expenses: number
   total_fuel_cost: number
   total_cost: number
+  total_hours: number
   profit: number | null
   hourly_rate: number | null
 }
