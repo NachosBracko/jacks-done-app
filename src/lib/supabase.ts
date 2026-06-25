@@ -5,16 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
-    '❌ Missing Supabase env vars. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file or Vercel dashboard.'
+    '❌ Missing Supabase env vars. Make sure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
   )
 }
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder',
-  {
-    auth: { persistSession: true },
-  }
+  { auth: { persistSession: true } }
 )
 
 export const isConfigured = !!(supabaseUrl && supabaseAnonKey)
